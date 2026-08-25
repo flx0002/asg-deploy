@@ -1,6 +1,6 @@
 Access the console via port-forward:
 
-  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "higress-console.fullname" . }} 8080:8080
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "higress-console.name" . }} 8080:8080
 
 {{ if .Values.ingress.enabled -}}
 Or use the Ingress URL:
