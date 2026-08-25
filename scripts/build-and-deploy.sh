@@ -21,10 +21,12 @@ build_image() {
     echo "    Build ctx  : ${CONSOLE_DIR}（.dockerignore 取自该目录）"
     # 注入 maven 镜像源 settings + ASG 扩展 jar（构建上下文 = console 仓库根，临时复制、用后即删）
     EXT_JAR="${EXT_JAR:-/root/.m2/repository/com/asg/asg-console-extension/0.0.1-SNAPSHOT/asg-console-extension-0.0.1-SNAPSHOT.jar}"
-    [ -f "${EXT_JAR}" ] || { echo "!! 缺少 asg-console-extension jar（需先构建安装 asg-console-extension 仓库）"; exit 1; }
+    EXT_POM="$(dirname "${EXT_JAR}")/asg-console-extension-0.0.1-SNAPSHOT.pom"
+    [ -f "${EXT_JAR}" ] && [ -f "${EXT_POM}" ] || { echo "!! 缺少 asg-console-extension jar/pom（需先构建安装 asg-console-extension 仓库）"; exit 1; }
     cp "${DEPLOY_DIR}/maven/settings.xml" "${CONSOLE_DIR}/.asg-settings.xml"
     cp "${EXT_JAR}" "${CONSOLE_DIR}/.asg-console-extension.jar"
-    trap 'rm -f "${CONSOLE_DIR}/.asg-settings.xml" "${CONSOLE_DIR}/.asg-console-extension.jar"' EXIT
+    cp "${EXT_POM}" "${CONSOLE_DIR}/.asg-console-extension.pom"
+    trap 'rm -f "${CONSOLE_DIR}/.asg-settings.xml" "${CONSOLE_DIR}/.asg-console-extension.jar" "${CONSOLE_DIR}/.asg-console-extension.pom"' EXIT
     export DOCKER_BUILDKIT=1
     docker build -t "${FULL_IMAGE}" -f "${DEPLOY_DIR}/Dockerfile" "${CONSOLE_DIR}"
     echo "=== Build complete: ${FULL_IMAGE} ==="

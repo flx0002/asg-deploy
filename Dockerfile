@@ -7,8 +7,9 @@ WORKDIR /build
 # Copy maven settings (aliyun mirror) for stable dependency download
 COPY .asg-settings.xml /build/settings.xml
 
-# Copy ASG extension jar (injected by build-and-deploy.sh from local ~/.m2)
+# Copy ASG extension jar + pom (injected by build-and-deploy.sh from local ~/.m2)
 COPY .asg-console-extension.jar /build/asg-console-extension.jar
+COPY .asg-console-extension.pom /build/asg-console-extension.pom
 
 # Copy maven wrapper and pom files first for better caching
 COPY backend/mvnw .
@@ -18,7 +19,7 @@ COPY backend/sdk/pom.xml sdk/pom.xml
 COPY backend/console/pom.xml console/pom.xml
 
 # Install ASG extension into maven cache (shared cache mount), then download deps
-RUN --mount=type=cache,target=/root/.m2/repository ./mvnw install:install-file -Dfile=/build/asg-console-extension.jar -DgroupId=com.asg -DartifactId=asg-console-extension -Dversion=0.0.1-SNAPSHOT -Dpackaging=jar && \
+RUN --mount=type=cache,target=/root/.m2/repository ./mvnw install:install-file -Dfile=/build/asg-console-extension.jar -DpomFile=/build/asg-console-extension.pom -DgroupId=com.asg -DartifactId=asg-console-extension -Dversion=0.0.1-SNAPSHOT -Dpackaging=jar && \
     ./mvnw dependency:go-offline -s /build/settings.xml -Dmaven.test.skip=true -Dpmd.skip=true -Dcheckstyle.skip=true -Dgpg.sign.skip=true -Denforcer.skip=true -Dlombok.delombok.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true 2>&1 || true
 
 # Copy backend source code
