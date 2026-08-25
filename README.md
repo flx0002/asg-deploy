@@ -35,6 +35,9 @@ bash dns-collector/install.sh <collector-token>
 ## 品牌与前端注入
 
 镜像构建前需在 console 仓库执行 asg-console-extension/frontend/inject.sh + brand-apply.sh 并完成前端构建（产出 frontend/build/）；不注入 = 纯上游 Higress 界面。
+构建前置（build-and-deploy.sh 会自动检查）：
+1. asg-console-extension 仓库已构建并 install 到本地 ~/.m2（com.asg:asg-console-extension:0.0.1-SNAPSHOT）
+2. maven 依赖走阿里云镜像（maven/settings.xml），构建缓存走 buildkit cache mount（~/.m2/repository）
 
 ## 第三方组件声明
 本仓库的 helm/core、helm/higress 目录为上游 Higress 项目（github.com/higress-group）的代码，按 Apache License 2.0 许可保留原版权与署名，仅在其上叠加 ASG 定制（详见"与上游对齐"一节）。helm/console 为 ASG 自建 chart（版权归 Beijing Winicssec Technologies Co., Ltd.）。
