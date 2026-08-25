@@ -4,6 +4,9 @@ FROM docker.m.daocloud.io/library/eclipse-temurin:21-jdk AS builder
 
 WORKDIR /build
 
+# Copy maven settings (aliyun mirror) for stable dependency download
+COPY .asg-settings.xml /build/settings.xml
+
 # Copy maven wrapper and pom files first for better caching
 COPY backend/mvnw .
 COPY backend/.mvn .mvn/
@@ -12,7 +15,7 @@ COPY backend/sdk/pom.xml sdk/pom.xml
 COPY backend/console/pom.xml console/pom.xml
 
 # Download dependencies (cached layer)
-RUN ./mvnw dependency:go-offline -Dmaven.test.skip=true -Dpmd.skip=true -Dcheckstyle.skip=true -Dgpg.sign.skip=true -Denforcer.skip=true -Dlombok.delombok.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true 2>&1 || true
+RUN --mount=type=cache,target=/root/.m2/repository ./mvnw dependency:go-offline -s /build/settings.xml -Dmaven.test.skip=true -Dpmd.skip=true -Dcheckstyle.skip=true -Dgpg.sign.skip=true -Denforcer.skip=true -Dlombok.delombok.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true 2>&1 || true
 
 # Copy backend source code
 COPY backend/ .
@@ -21,7 +24,7 @@ COPY backend/ .
 COPY frontend/build/ console/src/main/resources/static/
 
 # Build the project (skip frontend build, checkstyle, etc.)
-RUN ./mvnw clean package -Dmaven.test.skip=true -Dpmd.skip=true -Dcheckstyle.skip=true -Dgpg.sign.skip=true -Denforcer.skip=true -Dlombok.delombok.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -Dapp.build.dev=false -Dskip.frontend=true
+RUN --mount=type=cache,target=/root/.m2/repository ./mvnw clean package -s /build/settings.xml -Dmaven.test.skip=true -Dpmd.skip=true -Dcheckstyle.skip=true -Dgpg.sign.skip=true -Denforcer.skip=true -Dlombok.delombok.skip=true -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -Dapp.build.dev=false -Dskip.frontend=true
 
 # Stage 2: Runtime image
 FROM docker.m.daocloud.io/library/eclipse-temurin:21-jre

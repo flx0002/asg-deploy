@@ -19,6 +19,10 @@ build_image() {
     echo "=== Building WntASG Console image: ${FULL_IMAGE} ==="
     echo "    Dockerfile : ${DEPLOY_DIR}/Dockerfile"
     echo "    Build ctx  : ${CONSOLE_DIR}（.dockerignore 取自该目录）"
+    # 注入 maven 镜像源 settings（构建上下文 = console 仓库根，临时复制、用后即删）
+    cp "${DEPLOY_DIR}/maven/settings.xml" "${CONSOLE_DIR}/.asg-settings.xml"
+    trap 'rm -f "${CONSOLE_DIR}/.asg-settings.xml"' EXIT
+    export DOCKER_BUILDKIT=1
     docker build -t "${FULL_IMAGE}" -f "${DEPLOY_DIR}/Dockerfile" "${CONSOLE_DIR}"
     echo "=== Build complete: ${FULL_IMAGE} ==="
 }
