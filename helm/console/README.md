@@ -1,5 +1,5 @@
-# Higress Console Helm Chart
+# WntASG Console Helm Chart
 
-Installs the console components of cloud-native gateway [Higress](http://higress.io/)
+Installs the management console of the ASG (AISecGw) product, a new-generation AI converged security gateway built on Higress.
 
-**Note:** It is highly recommended to install the whole package of Higress. Please visit https://higress.io/docs/user/quickstart/ for details.
+This chart is maintained by the ASG project (asg-deploy) and is not part of the upstream Higress distribution.
