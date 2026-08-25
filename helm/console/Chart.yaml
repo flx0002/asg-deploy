@@ -1,0 +1,8 @@
+apiVersion: v2
+name: higress-console
+description: Management console for WntASG (AISecGw)
+type: application
+version: 2.2.2
+sources:
+  - https://github.com/flx0002g/AISecGw-console
+appVersion: "2.2.2"

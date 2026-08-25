@@ -1,0 +1,5 @@
+# helm dependency build 产物
+helm/higress/charts/*.tgz
+# Python
+__pycache__/
+*.pyc

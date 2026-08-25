@@ -1,0 +1,27 @@
+# ASG 生产部署 values 模板（asg-deploy, 4.7）
+# 用法: helm upgrade higress ./helm/higress -f values/values-prod.yaml [--reuse-values]
+# 生产要求:
+#   - 多副本 + 滚动更新（RollingUpdate 25%/25%，由 console chart strategy 段渲染）
+#   - asg.collectorToken / asg.mysql.secretName 指向集群 Secret，勿在 values 明文写死
+global:
+  local: true          # kind 单节点部署；生产多节点改 false
+  kind: false
+higress-console:
+  replicaCount: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  image:
+    repository: wntasg-console
+    tag: latest
+    pullPolicy: Never
+  asg:
+    enabled: true
+    collectorToken: "wnt-asg-collector-2026"   # 生产环境建议改为集群 Secret 注入
+    mysql:
+      url: "jdbc:mysql://asg-mysql.higress-system:3306/asg_security?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true"
+      secretName: "asg-console-mysql"
+      ddlAuto: "update"
+      dialect: "org.hibernate.dialect.MySQL8Dialect"
