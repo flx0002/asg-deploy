@@ -211,3 +211,27 @@ git clean -fd frontend/src frontend/public backend/console/src/main/resources/la
 2. 回滚仅 `git checkout` 会残留 inject 新增 untracked 文件（实测 19 个）→ 手册回滚命令补充 `git clean`（见 §5）。
 
 （演练执行证据：`.remote_check/s3e_e3_drill_out.txt`）
+
+---
+
+## 8. 真实执行记录（2026-08-26 手动全流程）
+
+> 与 §7 演练不同，本次由执行者按 §4 流程**直接作用于工作仓库与集群**（真实升级/部署），验证手册在真实环境的可执行性。
+
+| 步骤 | 结果 | 备注 |
+| --- | --- | --- |
+| Step 0-1 检查与备份 | 通过 | 三仓库干净；fork 落后上游 0 提交；备份分支已建 |
+| Step 2-3 获取上游 | 通过 | `Already up to date`（no-op，与演练场景 A 一致） |
+| Step 4 定制面核对 | 通过 | 18 文件精确匹配（E5 修正后命令） |
+| Step 5 兼容性检查 | 通过 | `ApiClient client` 命中 104 行 |
+| Step 6a 扩展测试 | 通过 | mvn test 退出码 0 |
+| Step 6b 后端编译 | 通过 | **需显式切 JDK11**（宿主默认 java 1.8 报 InternalErrorException，见下方实测修正②） |
+| Step 6c 注入+品牌+前端构建 | 通过 | inject(20)+brand(44) 幂等；landing 品牌化；Footer 无 v |
+| Step 6d 镜像构建 | 通过 | COPY frontend/build/ 非 CACHED |
+| Step 7 部署 | 通过 | rollout restart 后新 RS `5d69cb5855` 2/2 Running |
+| Step 8 集群回归 | 通过 | 28080=200；system/info = V100R001C01B010；品牌面人工确认 |
+| Step 9 收尾 | 待执行 | 台账登记 + push fork（见下文） |
+
+**实测发现并修正**：① 手册 Step 5 grep 命令路径/模式与实测不符（已 E5 修正）；② 宿主默认 java 1.8 致 mvn 报 InternalErrorException，需 `export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64`（已 E6 修正，见 Step 6 前置）。
+
+> 品牌注入为构建前置（inject/brand-apply 的预期产物），执行完毕后 fork 工作区恢复干净（`git checkout -- .` + `git clean -fd`），品牌仍由 asg-console-extension 重放，fork 保持上游原貌。
