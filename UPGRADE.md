@@ -172,7 +172,12 @@ IMAGE_TAG=V100R001C01B010 bash scripts/build-and-deploy.sh build
 ```
 
 幂等验证：重跑 `bash $EXT/inject.sh $CON && bash $EXT/brand-apply.sh $CON` → 全部 SKIP/已应用提示。
-回滚验证：`git checkout -- frontend/ backend/console/src/main/resources/landing/` 可清空注入（工作区恢复上游）。
+回滚验证（演练实测）：
+```bash
+git checkout -- frontend/ backend/console/src/main/resources/landing/    # 恢复已跟踪文件
+git clean -fd frontend/src frontend/public backend/console/src/main/resources/landing/   # 删除注入新增文件
+```
+（仅 checkout 会残留 19 个 inject 新增的 untracked 文件，必须配合 git clean。）
 
 ---
 
@@ -192,7 +197,12 @@ IMAGE_TAG=V100R001C01B010 bash scripts/build-and-deploy.sh build
 
 | 场景 | 步骤摘要 | 结果 | 耗时 |
 | --- | --- | --- | --- |
-| A. 无新上游提交 | fetch mirror + merge → 期望 no-op | （回填） | （回填） |
-| B. 上游有新提交（模拟） | 基于 upstream/main 造模拟提交（改 Dockerfile FROM 行）→ merge 触发冲突 → 按 §3 处置 → 定制面核对 → 编译验证 | （回填） | （回填） |
+| A. 无新上游提交 | fetch mirror + merge | **通过**：mirror/main 为 HEAD 祖先 → `Already up to date`（no-op，升级安全） | 0 分 |
+| B. 上游有新提交（模拟） | 基于 upstream/main 造模拟提交 64c3cb3（bump Dockerfile FROM 行）→ merge 冲突（UU backend/Dockerfile）→ 按 §3 #11 处置（取 fork 侧）→ merge 276249e → Step4 核对 = 18 文件精确匹配 → Step5 `ApiClient client` 字段在位 → Step6a mvn test 0（含 UpstreamApiClientAccessorTest）→ Step6c inject(20)+brand(44) 重放：landing 品牌化 6 处、Footer 无 v、幂等 SKIP → Step6b JDK11 全量编译成功（278 class） | 25 分 |
+| 合计 | 全流程 | **通过**：25 分 39 秒 ≤ 480 分钟（1 人日） | 25 分 39 秒 |
 
-（演练执行证据见 `.remote_check/s3e_e3_drill_out.txt`）
+**演练发现并修正的问题**：
+1. 品牌面遗漏：`backend/console/src/main/resources/landing/index.html` 硬编码品牌（提交 9e27ea3/e1981ed）未纳入 brand.patch → s3e 恢复上游 + 补丁补充（fork cde5ec6 / extension a860ce7），品牌面 100% 可重放；
+2. 回滚仅 `git checkout` 会残留 inject 新增 untracked 文件（实测 19 个）→ 手册回滚命令补充 `git clean`（见 §5）。
+
+（演练执行证据：`.remote_check/s3e_e3_drill_out.txt`）
