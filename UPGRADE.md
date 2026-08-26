@@ -105,12 +105,17 @@ grep -n "ApiClient client" backend/sdk/src/main/java/com/alibaba/higress/sdk/ser
 ### Step 6 验证链（必须全绿才可提交）
 
 ```bash
-# 6a. 扩展模块测试（含 UpstreamApiClientAccessor 反射兼容性单测）
-cd /home/wnt/ASG/asg-console-extension && mvn test
+# 前置：切 JDK11（宿主默认 java 为 1.8，不切会报 InternalErrorException）
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+M2SET=/home/wnt/ASG/asg-deploy/maven/settings.xml   # 阿里云镜像，依赖下载必需
 
-# 6b. console 后端全量编译（JDK11）
+# 6a. 扩展模块测试（含 UpstreamApiClientAccessor 反射兼容性单测）
+cd /home/wnt/ASG/asg-console-extension && mvn -q test -s $M2SET
+
+# 6b. console 后端全量编译（JDK11，约 23 分钟）
 cd /home/wnt/ASG/AISecGw-console/backend
-mvn -q compile -Dpmd.skip=true -Dcheckstyle.skip=true -Dgpg.sign.skip=true -Dmaven.javadoc.skip=true
+mvn -q compile -s $M2SET -Dpmd.skip=true -Dcheckstyle.skip=true -Dgpg.sign.skip=true -Dmaven.javadoc.skip=true
 
 # 6c. 前端注入 + 品牌重放 + 前端构建（见 §5）
 # 6d. 镜像构建（见 §5）
