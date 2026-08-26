@@ -98,8 +98,8 @@ git status --short                      # 必须干净
 ### Step 5 上游兼容性检查
 
 ```bash
-grep -n "public KubernetesClient client" backend/sdk/src/main/java/com/alibaba/higress/sdk/service/KubernetesClientService.java
-# UpstreamApiClientAccessor 依赖该字段（反射），缺失则启动期报异常
+grep -n "ApiClient client" backend/sdk/src/main/java/com/alibaba/higress/sdk/service/kubernetes/KubernetesClientService.java
+# UpstreamApiClientAccessor 依赖该字段（反射，实际声明 `private ApiClient client;`，见演练证据 s3e_e3_drill_out.txt 第 104 行），缺失则启动期报异常
 ```
 
 ### Step 6 验证链（必须全绿才可提交）
