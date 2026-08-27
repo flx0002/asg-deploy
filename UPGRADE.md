@@ -50,6 +50,11 @@
 
 > 品牌面（不在此清单，见 §5）：前端 20 文件 + `backend/console/src/main/resources/landing/index.html` + 6 资源 + locales 15 key×2，由 brand-apply.sh 重放，fork 内为上游原貌。
 
+> **插件面重叠处置（非 fork 文件，升级时单独处置，2026-08-27 核验登记）**：
+> - `key-auth` 自研覆盖版（源码 `asg-wasm-plugins/extensions/key-auth`，main.go +61 行 `identify_only` 识别模式——仅识别合法消费者并设置 `x-mse-consumer` 头、不拒绝未认证请求）：集群运行本地编译产物 `oci://172.22.0.3:5000/plugins/key-auth:2.0.2`，覆盖上游同名插件。**上游更新 key-auth 时必须人工比对并重放改造**（重新编译 + 推送本地 registry + 重建 WasmPlugin 引用）。
+> - `ai-quota` 为上游同名插件本地化编译（**无自研改造**，`oci://172.22.0.3:5000/plugins/ai-quota:1.0.0`），供内网离线部署，随 fork 升级自动更新，无需处置。
+> - 其余自研插件（ai-agent-guard、ai-prompt-guard、ai-pii-guard、ai-token-billing、shadow-ai-detect、sni-misredirect、ai-context-manager）：上游无同名，无重叠。
+
 ---
 
 ## 4. 升级流程细则
@@ -94,6 +99,9 @@ git diff --stat upstream/main...HEAD | tail -22
 # 期望：18 files changed（文件集合 = §3 表）；行数变化与登记一致
 git status --short                      # 必须干净
 ```
+
+插件面核对（§3 插件面）：`cd /home/wnt/ASG/asg-wasm-plugins && git fetch origin && git log --oneline origin/main..main`
+# 若上游更新过 key-auth（上游仓库 plugins/wasm-go/examples/key-auth 有变化）→ 按 §3 插件面处置重放 identify_only 改造并重新编译推送本地 registry
 
 ### Step 5 上游兼容性检查
 
