@@ -8,3 +8,5 @@ data:
     {{- if .Values.redis.password }}
     requirepass {{ .Values.redis.password }}
     {{- end }}
+    appendonly yes
+    appendfsync everysec
