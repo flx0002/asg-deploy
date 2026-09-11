@@ -6,7 +6,7 @@ import (
 )
 
 // CategoryRule 动态分类规则：来自 Console dns-policy 下发的 categories，
-// 与网关 shadow-ai-detect 插件配置同源（IR-001 分类口径对齐）。
+// 与网关 ai-shadow-detect 插件配置同源（IR-001 分类口径对齐）。
 type CategoryRule struct {
 	Name      string   `json:"name"`
 	Label     string   `json:"label"`

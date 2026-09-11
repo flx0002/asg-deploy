@@ -72,7 +72,7 @@ func (p *PolicyManager) sync() {
 
 // fetchMode 拉取 detect-mode（兼容 JSON 与裸字符串两种返回）
 func (p *PolicyManager) fetchMode() (string, bool) {
-	url := p.cfg.ConsoleBase + "/v1/shadow-ai/detect-mode"
+	url := p.cfg.ConsoleBase + "/v1/ai-shadow/detect-mode"
 	resp, err := p.client.Get(url)
 	if err != nil {
 		log.Printf("[policy] detect-mode 拉取失败: %v", err)
@@ -101,7 +101,7 @@ func (p *PolicyManager) fetchMode() (string, bool) {
 // fetchPolicy 拉取域名策略：返回 (blocked 清单, authorized 清单, AI 分类库)
 // 兼容三种返回结构：{data:{authorizedDomains, categories}} / {data:[{domain,authorized}]} / 直接数组
 func (p *PolicyManager) fetchPolicy() (blocked, authorized []string, cats []CategoryRule, ok bool) {
-	url := p.cfg.ConsoleBase + "/v1/shadow-ai/dns-policy"
+	url := p.cfg.ConsoleBase + "/v1/ai-shadow/dns-policy"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, nil, nil, false

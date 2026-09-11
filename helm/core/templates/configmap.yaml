@@ -177,19 +177,19 @@ data:
           },
           {
             "tag_name": "category",
-            "regex": "^wasmcustom\\.shadow_ai_detect\\.category\\.((.*?)\\.)domain"
+            "regex": "^wasmcustom\\.ai_shadow_detect\\.category\\.((.*?)\\.)domain"
           },
           {
             "tag_name": "domain",
-            "regex": "^wasmcustom\\.shadow_ai_detect\\..*?\\.domain\\.((.*?)\\.)risk"
+            "regex": "^wasmcustom\\.ai_shadow_detect\\..*?\\.domain\\.((.*?)\\.)risk"
           },
           {
             "tag_name": "risk",
-            "regex": "^wasmcustom\\.shadow_ai_detect\\..*?\\.risk\\.((.*?)\\.)status"
+            "regex": "^wasmcustom\\.ai_shadow_detect\\..*?\\.risk\\.((.*?)\\.)status"
           },
           {
             "tag_name": "status",
-            "regex": "^wasmcustom\\.shadow_ai_detect\\..*?\\.status\\.((.*?)\\.)requests"
+            "regex": "^wasmcustom\\.ai_shadow_detect\\..*?\\.status\\.((.*?)\\.)requests"
           },
           {
             "tag_name": "response_code_class",

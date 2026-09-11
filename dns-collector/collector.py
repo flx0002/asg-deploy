@@ -5,9 +5,9 @@ DNS Shadow AI Collector v2（接口上报版，方案 B）
 ================================================
 功能：抓取宿主机网卡上的 DNS 查询（AI 域名），匹配影子 AI 分类后：
   1) 聚合计数暴露 Prometheus metric（保留 v1 链路，供实时展示）
-  2) 按窗口批量上报 ASG Console 的 POST /v1/shadow-ai/detect-events，
+  2) 按窗口批量上报 ASG Console 的 POST /v1/ai-shadow/detect-events，
      事件持久化到 MySQL（IR-025 内容安全检测记录，可与审计链按 Session ID 关联）
-  3) 周期性拉取 GET /v1/shadow-ai/dns-policy，执行控制能力（IR-004）：
+  3) 周期性拉取 GET /v1/ai-shadow/dns-policy，执行控制能力（IR-004）：
      强制模式下对未授权 AI 域名下发 iptables 丢弃规则（DNS 查询阻断），
      监控模式/授权域名自动移除规则。
 
@@ -34,7 +34,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 INTERFACE = os.environ.get("ASG_DNS_IFACE", "enp3s0")
 LISTEN_ADDR, LISTEN_PORT = "0.0.0.0", 9101
-METRIC_NAME = "shadow_ai_detect_category_domain_risk_status_requests"
+METRIC_NAME = "ai_shadow_detect_category_domain_risk_status_requests"
 SOURCE_LABEL = "dns"
 TSHARK_BIN = "/usr/bin/tshark"
 
@@ -47,7 +47,7 @@ POLICY_INTERVAL = 10          # 策略轮询间隔（秒）
 PENDING_LIMIT = 500           # 上报失败缓冲上限（条）
 IPTABLES_COMMENT = "asg-shadow-ai"
 
-# 与集群中 shadow-ai-detect WasmPlugin 配置保持一致
+# 与集群中 ai-shadow-detect WasmPlugin 配置保持一致
 CATEGORIES = [
     {
         "name": "saas_ai", "risk": "high",
@@ -295,7 +295,7 @@ def report_loop(capture):
         events = []
         for (category, domain, status), agg in window.items():
             events.append({
-                "detectType": "dns_shadow_ai",
+                "detectType": "dns_ai_shadow",
                 "domain": domain,
                 "category": category,
                 "riskLevel": next((c["risk"] for c in CATEGORIES if c["name"] == category), "high"),
@@ -309,7 +309,7 @@ def report_loop(capture):
         if not events:
             continue
         try:
-            status, body = http_json(CONSOLE_BASE.rstrip("/") + "/v1/shadow-ai/detect-events",
+            status, body = http_json(CONSOLE_BASE.rstrip("/") + "/v1/ai-shadow/detect-events",
                                      {"events": events})
             if status != 200:
                 raise RuntimeError("HTTP %s: %s" % (status, body[:200]))
@@ -326,7 +326,7 @@ def policy_loop(capture):
     while capture.running:
         time.sleep(POLICY_INTERVAL)
         try:
-            status, body = http_json(CONSOLE_BASE.rstrip("/") + "/v1/shadow-ai/dns-policy", {}, "GET")
+            status, body = http_json(CONSOLE_BASE.rstrip("/") + "/v1/ai-shadow/dns-policy", {}, "GET")
             if status != 200:
                 raise RuntimeError("HTTP %s" % status)
             data = json.loads(body)["data"]
@@ -393,7 +393,7 @@ def main():
           % (LISTEN_PORT, INTERFACE, CONSOLE_BASE, REPORT_INTERVAL), flush=True)
     # 启动即同步一次策略（让阻断规则立即生效）
     try:
-        status, body = http_json(CONSOLE_BASE.rstrip("/") + "/v1/shadow-ai/dns-policy", {}, "GET")
+        status, body = http_json(CONSOLE_BASE.rstrip("/") + "/v1/ai-shadow/dns-policy", {}, "GET")
         if status == 200:
             data = json.loads(body)["data"]
             with CAPTURE.policy_lock:

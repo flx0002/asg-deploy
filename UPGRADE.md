@@ -38,7 +38,7 @@
 | --- | --- | --- |
 | 1 | `backend/sdk/.../service/WasmPluginServiceImpl.java`（1 行 NPE 防御） | 保留 fork 侧 |
 | 2 | `backend/console/.../resources/plugins/plugins.properties`（+3 行） | 保留 fork 侧（classloader 单资源限制，不可外置） |
-| 3-8 | `plugins/ai-pii-guard/`（README×2 + spec.yaml）、`ai-prompt-guard/`（README×2 + spec.yaml）、`shadow-ai-detect/spec.yaml`、`key-auth/spec.yaml` | 保留 fork 侧（ASG 插件数据） |
+| 3-8 | `plugins/ai-pii-guard/`（README×2 + spec.yaml）、`ai-prompt-guard/`（README×2 + spec.yaml）、`ai-shadow-detect/spec.yaml`、`key-auth/spec.yaml` | 保留 fork 侧（ASG 插件数据） |
 | 9 | `backend/Dockerfile`（daocloud 镜像源 1 行 + 注释） | 冲突时取 fork 侧 FROM 行 + 上游其余内容（国内拉取必需） |
 | 10 | `backend/console/pom.xml`（扩展依赖块 + node 22.22.2 / app.build.* / skip.frontend / caniuse / git 参数） | 冲突时逐块核对：扩展依赖 + 构建参数保留，其余随上游 |
 | 11 | `.gitignore`（+1 行 i18n-check-results） | 保留 fork 侧 |
@@ -53,7 +53,7 @@
 > **插件面重叠处置（非 fork 文件，升级时单独处置，2026-08-27 核验登记）**：
 > - `key-auth` 自研覆盖版（源码 `asg-wasm-plugins/extensions/key-auth`，main.go +61 行 `identify_only` 识别模式——仅识别合法消费者并设置 `x-mse-consumer` 头、不拒绝未认证请求）：集群运行本地编译产物 `oci://172.22.0.3:5000/plugins/key-auth:2.0.2`，覆盖上游同名插件。**上游更新 key-auth 时必须人工比对并重放改造**（重新编译 + 推送本地 registry + 重建 WasmPlugin 引用）。
 > - `ai-quota` 为上游同名插件本地化编译（**无自研改造**，`oci://172.22.0.3:5000/plugins/ai-quota:1.0.0`），供内网离线部署，随 fork 升级自动更新，无需处置。
-> - 其余自研插件（ai-agent-guard、ai-prompt-guard、ai-pii-guard、ai-token-billing、shadow-ai-detect、sni-misredirect、ai-context-manager）：上游无同名，无重叠。
+> - 其余自研插件（ai-agent-guard、ai-prompt-guard、ai-pii-guard、ai-token-billing、ai-shadow-detect、sni-misredirect、ai-context-manager）：上游无同名，无重叠。
 
 ---
 
@@ -147,7 +147,7 @@ kubectl rollout status deployment/higress-console -n higress-system --timeout=30
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:28080/          # 期望 200
 curl -s http://127.0.0.1:28080/system/info                                 # 期望 {"version":"V100R001C01B010",...}
 # 登录（username 字段）：POST /session/login → 期望 201
-# 接口回归：/v1/shadow-ai/status、/v1/agent-guard/sessions、/v1/behavior-analysis/stats、/v1/shadow-ai/detect-mode → 全部 200
+# 接口回归：/v1/ai-shadow/status、/v1/agent-guard/sessions、/v1/behavior-analysis/stats、/v1/ai-shadow/detect-mode → 全部 200
 # 品牌面：浏览器检查 footer 版本号无 v 前缀、logo/title 为 WntASG、登录页品牌、landing 页（/landing）品牌
 # 错误日志：kubectl logs <pod> | grep -i error（无新增 ERROR）
 ```
