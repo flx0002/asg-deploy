@@ -1,0 +1,49 @@
+# asg-bypass-guard 旁路数据面采集与阻断引擎配置 —— 入库模板（默认值 + 占位符）
+# 说明：本文件入库；真实运行配置 config.yaml 被 .gitignore 忽略，部署时由 deploy.sh
+#       从本模板渲染生成到 /opt/asg-bypass-guard/config.yaml（现场相关值自动探测）。
+# 占位符：__IFACE__=抓包网卡（ip route 默认网卡探测）；__NODE_IP__=Console 节点IP
+# 定位：IR-079 模式3（旁路流量接入）——SPAN/镜像口流量采集 + 注入式阻断
+# 采集：任意端口协议识别（DNS/HTTP/HTTPS-TLS-SNI），不依赖默认 53/443/80
+# 阻断：注入式（RST/DNS 污染），非 iptables（旁路场景 iptables 对业务流量无效）
+
+# 镜像口：接收被分析流量（交换机 SPAN 口对接）
+interface: __IFACE__
+# 控制口：发送注入阻断包；空 = 与镜像口同接口收发
+control_interface: ""
+snap_len: 65535
+promisc: true
+
+# 协议开关
+protocols:
+  dns: true
+  http: true
+  https: true
+
+# 端口策略：any = 任意端口协议识别（用户改端口仍可检出）；fixed = 仅识别 fixed_ports
+port_policy: any
+# fixed_ports: [53, 80, 443, 5353, 8080, 8443]
+
+# 运行模式：monitoring = 检测+上报；enforcement = 检测+上报+注入阻断
+# 注：会被 Console 策略联动（detect-mode 接口）覆盖
+mode: monitoring
+
+# Console 联动
+console_base: http://__NODE_IP__:30080
+collector_token: wnt-asg-collector-2026
+policy_poll_seconds: 30
+
+# Prometheus 指标端口
+metrics_port: 9102
+
+# 兜底阻断域名清单（Console 不可达时生效；空 = 仅依赖 Console 策略）
+domain_blacklist:
+  - chat.openai.com
+  - claude.ai
+  - www.anthropic.com
+  - gemini.google.com
+  - bard.google.com
+  - chatgpt.com
+  - openai.com
+
+# DNS 污染响应方式：nxdomain = 返回 NXDOMAIN；blackhole = 返回 A 127.0.0.1
+dns_poison: nxdomain

@@ -6,8 +6,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/wnt/ASG/asg-bypass-guard
-ExecStart=/home/wnt/ASG/asg-bypass-guard/asg-bypass-guard -config /home/wnt/ASG/asg-bypass-guard/config.yaml
+WorkingDirectory=/opt/asg-bypass-guard
+ExecStart=/opt/asg-bypass-guard/asg-bypass-guard -config /opt/asg-bypass-guard/config.yaml
 Restart=on-failure
 RestartSec=3
 # 生产环境默认关闭调试日志；排查时取消下行注释
