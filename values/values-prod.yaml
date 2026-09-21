@@ -6,6 +6,7 @@
 global:
   local: true          # kind 单节点部署；生产多节点改 false
   kind: false
+  enableRedis: true      # 启用 redis-stack-server：ai-quota/ai-token-billing/ai-agent-guard 插件运行时依赖；chart 缺省 false，不设会导致全新安装无 redis
 higress-console:
   replicaCount: 2
   strategy:
@@ -25,3 +26,12 @@ higress-console:
       secretName: "asg-console-mysql"
       ddlAuto: "update"
       dialect: "org.hibernate.dialect.MySQL8Dialect"
+
+# redis 持久化（与现网已验证 release values 一致；kind 默认 standard StorageClass）
+higress-core:
+  redis:
+    redis:
+      persistence:
+        enabled: true
+        size: 1Gi
+        storageClass: standard
