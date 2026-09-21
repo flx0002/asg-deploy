@@ -9,23 +9,24 @@ import (
 
 // Config 旁路采集与阻断引擎配置
 type Config struct {
-	Interface         string       `yaml:"interface"`
-	ControlInterface  string       `yaml:"control_interface"`
-	SnapLen           int          `yaml:"snap_len"`
-	Promisc           bool         `yaml:"promisc"`
-	Protocols         Protocols    `yaml:"protocols"`
-	PortPolicy        string       `yaml:"port_policy"`
-	FixedPorts        []uint16     `yaml:"fixed_ports"`
-	Mode              string       `yaml:"mode"`
-	ConsoleBase       string       `yaml:"console_base"`
-	CollectorToken    string       `yaml:"collector_token"`
-	PolicyPollSeconds int          `yaml:"policy_poll_seconds"`
-	MetricsPort       int          `yaml:"metrics_port"`
-	DomainBlacklist   []string     `yaml:"domain_blacklist"`
-	DNSPoison         string       `yaml:"dns_poison"`
+	Interface          string    `yaml:"interface"`
+	ControlInterface   string    `yaml:"control_interface"`
+	SnapLen            int       `yaml:"snap_len"`
+	Promisc            bool      `yaml:"promisc"`
+	Protocols          Protocols `yaml:"protocols"`
+	PortPolicy         string    `yaml:"port_policy"`
+	FixedPorts         []uint16  `yaml:"fixed_ports"`
+	Mode               string    `yaml:"mode"`
+	ConsoleBase        string    `yaml:"console_base"`
+	CollectorToken     string    `yaml:"collector_token"`
+	PolicyPollSeconds  int       `yaml:"policy_poll_seconds"`
+	MetricsPort        int       `yaml:"metrics_port"`
+	DomainBlacklist    []string  `yaml:"domain_blacklist"`
+	DNSPoison          string    `yaml:"dns_poison"`
+	ReportDedupSeconds int       `yaml:"report_dedup_seconds"` // 非阻断事件入库去重窗口(秒)，<=0 关闭
 	// 运行时状态（由策略轮询更新，非配置）
-	mu           sync.RWMutex
-	blacklistMap map[string]bool
+	mu            sync.RWMutex
+	blacklistMap  map[string]bool
 	authorizedMap map[string]bool // Console 授权放行清单（dns-policy authorizedDomains）
 	policyActive  bool            // Console 策略是否已联动（authorized 清单生效）
 }
@@ -57,6 +58,9 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if cfg.MetricsPort == 0 {
 		cfg.MetricsPort = 9102
+	}
+	if cfg.ReportDedupSeconds == 0 {
+		cfg.ReportDedupSeconds = 60
 	}
 	if cfg.Mode != "enforcement" {
 		cfg.Mode = "monitoring"

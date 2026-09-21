@@ -61,8 +61,12 @@ func (e *Engine) handleEvent(ev *ParsedEvent, ip *layers.IPv4) {
 	category, risk, matched := ClassifyFull(ev.Domain)
 	blocked := e.cfg.IsBlocked(ev.Domain, category, matched)
 
-	// 上报（两种模式均上报，风险等级随分类库对齐，阻断事件恒 critical）
-	e.reporter.Report(ev, category, risk, blocked)
+	// 上报门禁：仅"命中 AI 分类库(matched)"或"实际阻断(blocked)"才上报，
+	// 过滤掉宿主机/系统/内部服务的普通 DNS 噪声(clamav/NTP/软件源/K8s 服务名等)，
+	// 否则 ai_shadow_detect_event 会被 unknown 事件灌满、只增不减（事件风暴）。
+	if matched || blocked {
+		e.reporter.Report(ev, category, risk, blocked)
+	}
 
 	// enforcement 模式 + 命中黑名单 → 注入阻断
 	if e.currentMode() == "enforcement" && blocked {

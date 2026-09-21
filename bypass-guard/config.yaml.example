@@ -47,3 +47,6 @@ domain_blacklist:
 
 # DNS 污染响应方式：nxdomain = 返回 NXDOMAIN；blackhole = 返回 A 127.0.0.1
 dns_poison: nxdomain
+
+# 非阻断事件入库去重窗口(秒)，防真实 AI 域名高频解析灌满事件表；<=0 关闭
+report_dedup_seconds: 60

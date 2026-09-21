@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,10 +15,12 @@ import (
 
 // Reporter Console 事件上报（批量窗口） + Prometheus 指标
 type Reporter struct {
-	cfg    *Config
-	client *http.Client
-	queue  chan EventBody
-	done   chan struct{}
+	cfg     *Config
+	client  *http.Client
+	queue   chan EventBody
+	done    chan struct{}
+	dedupMu sync.Mutex
+	dedup   map[string]time.Time
 }
 
 // EventBody 与 Console DetectEventReportRequest.DetectEvent 对齐
@@ -47,6 +50,7 @@ func NewReporter(cfg *Config) *Reporter {
 		client: &http.Client{Timeout: 8 * time.Second},
 		queue:  make(chan EventBody, reportQueueSize),
 		done:   make(chan struct{}),
+		dedup:  make(map[string]time.Time),
 	}
 	go r.sendLoop()
 	return r
@@ -65,10 +69,15 @@ func (r *Reporter) Report(ev *ParsedEvent, category string, risk string, blocked
 		status = "blocked"
 		risk = "critical"
 	}
-	// Prometheus 指标
+	// Prometheus 指标（每次命中都计数，保留真实流量观测）
 	bypassRequests.WithLabelValues(ev.Protocol, ev.Domain, category, status).Inc()
 	if blocked {
 		bypassBlocked.WithLabelValues(ev.Protocol).Inc()
+	}
+	// 入库去重：非阻断的重复 (proto,domain,srcIP) 在窗口内只落一条，防真实 AI 域名高频解析灌满事件表；
+	// 阻断事件恒入库（安全审计不可丢），不经去重。
+	if !blocked && r.dedupHit(ev) {
+		return
 	}
 	// detail：基础字段 + TLS 指纹（HTTPS 场景）
 	detail := fmt.Sprintf(`{"protocol":"%s","srcPort":%d,"dstPort":%d,"method":"%s","uri":"%s"}`, ev.Protocol, ev.SrcPort, ev.DstPort, ev.Method, ev.URI)
@@ -94,6 +103,31 @@ func (r *Reporter) Report(ev *ParsedEvent, category string, risk string, blocked
 		// 队列满丢弃（采集优先，指标仍计数）
 		bypassDropped.Inc()
 	}
+}
+
+// dedupHit 判断非阻断事件在去重窗口内是否已入库过（命中=抑制本次入库）。
+// 窗口由 cfg.ReportDedupSeconds 控制，<=0 关闭去重；map 过大时惰性清理过期项防长跑内存增长。
+func (r *Reporter) dedupHit(ev *ParsedEvent) bool {
+	win := time.Duration(r.cfg.ReportDedupSeconds) * time.Second
+	if win <= 0 {
+		return false
+	}
+	key := ev.Protocol + "|" + ev.Domain + "|" + ev.SrcIP.String()
+	now := time.Now()
+	r.dedupMu.Lock()
+	defer r.dedupMu.Unlock()
+	if last, ok := r.dedup[key]; ok && now.Sub(last) < win {
+		return true
+	}
+	r.dedup[key] = now
+	if len(r.dedup) > 4096 {
+		for k, t := range r.dedup {
+			if now.Sub(t) >= win {
+				delete(r.dedup, k)
+			}
+		}
+	}
+	return false
 }
 
 // sendLoop 批量窗口发送：满 20 条或 5 秒超时即发
