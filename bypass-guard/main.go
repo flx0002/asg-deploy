@@ -1,31 +1,45 @@
 // asg-bypass-guard 旁路数据面采集与阻断引擎
 //
 // 定位：IR-079 模式3（旁路流量接入）生产级实现
-// - 采集：AF_PACKET 抓包 + 任意端口协议识别（DNS/HTTP/HTTPS-TLS-SNI），
-//   不依赖默认端口 53/443/80——用户改端口仍可检出
-// - 阻断：注入式（业界成熟方案：TCP RST / DNS 污染响应），
-//   替代 iptables（旁路场景业务流量不经本机，iptables 无效）
-// - 联动：Console detect-events 上报 + Prometheus 9102 + 策略轮询
+//   - 采集：AF_PACKET 抓包 + 任意端口协议识别（DNS/HTTP/HTTPS-TLS-SNI），
+//     不依赖默认端口 53/443/80——用户改端口仍可检出
+//   - 阻断：注入式（业界成熟方案：TCP RST / DNS 污染响应），
+//     替代 iptables（旁路场景业务流量不经本机，iptables 无效）
+//   - 联动：Console detect-events 上报 + Prometheus 9102 + 策略轮询
 package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
+// 构建期由 -ldflags -X 注入（见 build-release.sh / deploy.sh），默认值用于源码直跑
+var (
+	version   = "dev"
+	commit    = "none"
+	buildDate = "unknown"
+)
+
 func main() {
 	cfgPath := flag.String("config", "config.yaml", "配置文件路径")
+	showVer := flag.Bool("version", false, "打印版本信息并退出")
 	flag.Parse()
+
+	if *showVer {
+		fmt.Printf("asg-bypass-guard %s (commit=%s, built=%s)\n", version, commit, buildDate)
+		return
+	}
 
 	cfg, err := LoadConfig(*cfgPath)
 	if err != nil {
 		log.Fatalf("配置加载失败: %v", err)
 	}
-	log.Printf("[init] asg-bypass-guard 启动: iface=%s mode=%s port_policy=%s",
-		cfg.Interface, cfg.Mode, cfg.PortPolicy)
+	log.Printf("[init] asg-bypass-guard 启动: version=%s commit=%s iface=%s mode=%s port_policy=%s",
+		version, commit, cfg.Interface, cfg.Mode, cfg.PortPolicy)
 
 	// 1. 指标服务
 	StartMetrics(cfg.MetricsPort)

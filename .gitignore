@@ -3,3 +3,6 @@ helm/higress/charts/*.tgz
 # Python
 __pycache__/
 *.pyc
+
+# build-release.sh 产物
+bypass-guard/dist/

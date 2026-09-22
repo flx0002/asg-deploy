@@ -12,8 +12,11 @@ mkdir -p "$RUN"
 
 echo "=== 2. 编译（源码 $SRC → $RUN）==="
 cd "$SRC"
-go build -o "$RUN/asg-bypass-guard" . 2>&1 | tail -5
-echo "BUILD OK"
+VERSION=$(git describe --tags --always 2>/dev/null || echo dev)
+COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo none)
+BDATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+go build -trimpath -ldflags "-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.buildDate=$BDATE" -o "$RUN/asg-bypass-guard" . 2>&1 | tail -5
+echo "BUILD OK (version=$VERSION commit=$COMMIT)"
 
 echo "=== 3. config.yaml ==="
 if [ -f "$RUN/config.yaml" ]; then

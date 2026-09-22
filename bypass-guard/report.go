@@ -207,10 +207,16 @@ var (
 		Name: "ai_shadow_bypass_dropped_total",
 		Help: "Events dropped due to full report queue",
 	})
+	// ai_shadow_bypass_guard_build_info 构建版本信息（恒为 1，标签携带版本，供舰队可观测“现网跑的是哪版”）
+	bypassBuildInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ai_shadow_bypass_guard_build_info",
+		Help: "Bypass collector build info (constant 1; labels carry version/commit/date)",
+	}, []string{"version", "commit", "date"})
 )
 
 func init() {
-	prometheus.MustRegister(bypassRequests, bypassBlocked, bypassPackets, bypassDropped)
+	prometheus.MustRegister(bypassRequests, bypassBlocked, bypassPackets, bypassDropped, bypassBuildInfo)
+	bypassBuildInfo.WithLabelValues(version, commit, buildDate).Set(1)
 }
 
 // StartMetrics 启动 Prometheus 指标服务
