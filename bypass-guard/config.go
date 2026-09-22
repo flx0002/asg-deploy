@@ -24,6 +24,7 @@ type Config struct {
 	DomainBlacklist    []string  `yaml:"domain_blacklist"`
 	DNSPoison          string    `yaml:"dns_poison"`
 	ReportDedupSeconds int       `yaml:"report_dedup_seconds"` // 非阻断事件入库去重窗口(秒)，<=0 关闭
+	ExcludeSrcIPs      []string  `yaml:"exclude_src_ips"`      // 额外排除的源 IP（采集器自身 IP 已自动纳入）
 	// 运行时状态（由策略轮询更新，非配置）
 	mu            sync.RWMutex
 	blacklistMap  map[string]bool

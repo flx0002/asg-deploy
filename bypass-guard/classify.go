@@ -27,15 +27,15 @@ var categoryRules = []struct {
 		"qianwen.aliyun.com", "doubao.com", "yiyan.baidu.com", "erniebot.baidu.com",
 		"zhipuai.cn", "bigmodel.cn", "spark.xfyun.cn", "iflytek.com", "minimax.chat",
 		"hailuoai.com", "stepchat.com", "hunyuan.tencent.com", "llm.moonshot.cn",
-		"chatglm.cn", "gitee.com",
+		"chatglm.cn",
 	}},
 	{"proxy", []string{
 		"openai-proxy", "aiproxy", "one-api", "new-api", "unified-api", "api2d.com",
 		"ohmygpt.com", "gptgod.online", "chatanywhere", "freegpt", "porthub",
 	}},
-	{"opensource", []string{
+	{"opensource", []string{ // 仅模型托管类；通用代码托管站 github.com/gitee.com 已移出（防误报）
 		"ollama", "localhost", "huggingface.co", "hf.co", "modelscope.cn",
-		"vllm", "text-generation-webui", "github.com", "huggingface",
+		"vllm", "text-generation-webui", "huggingface", "models.github.com",
 	}},
 }
 

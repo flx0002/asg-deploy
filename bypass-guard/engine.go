@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 	"sync"
 	"time"
 
@@ -20,6 +21,8 @@ type Engine struct {
 	mode   string // monitoring / enforcement（策略联动动态更新）
 
 	t0 time.Time // DNS 包到达时间打点（单 goroutine 访问，测注入耗时）
+
+	localIPs map[string]bool // 采集宿主机自身 IP，其出网流量不作为影子 AI 终端上报
 }
 
 func NewEngine(cfg *Config, sessions *SessionTable, reporter *Reporter, injector *Injector) *Engine {
@@ -30,7 +33,26 @@ func NewEngine(cfg *Config, sessions *SessionTable, reporter *Reporter, injector
 		injector: injector,
 		done:     make(chan struct{}),
 		mode:     cfg.Mode,
+		localIPs: localIPSet(cfg),
 	}
+}
+
+// localIPSet 采集器宿主机自身接口 IP（含 loopback/docker 网关）∪ 配置排除项。
+// 旁路镜像会把宿主机运维流量（git/apt/软件源）一并抓到，若不按源 IP 排除，
+// 本机将被误当作局域网“影子 AI 终端”上报。
+func localIPSet(cfg *Config) map[string]bool {
+	set := map[string]bool{}
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		for _, a := range addrs {
+			if ipn, ok := a.(*net.IPNet); ok {
+				set[ipn.IP.String()] = true
+			}
+		}
+	}
+	for _, ip := range cfg.ExcludeSrcIPs {
+		set[ip] = true
+	}
+	return set
 }
 
 // currentMode 当前运行模式
@@ -58,6 +80,10 @@ func (e *Engine) Close() {
 
 // handleEvent 事件处理链：分类（动态库+兜底）→ 上报 → enforcement 命中注入阻断
 func (e *Engine) handleEvent(ev *ParsedEvent, ip *layers.IPv4) {
+	// 排除采集器宿主机自身流量（运维出网被镜像抓取会形成误报）
+	if ev.SrcIP != nil && e.localIPs[ev.SrcIP.String()] {
+		return
+	}
 	category, risk, matched := ClassifyFull(ev.Domain)
 	blocked := e.cfg.IsBlocked(ev.Domain, category, matched)
 
