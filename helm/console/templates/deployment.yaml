@@ -67,6 +67,22 @@ spec:
               value: {{ .Values.asg.mysql.dialect | quote }}
             - name: ASG_COLLECTOR_TOKEN
               value: {{ .Values.asg.collectorToken | quote }}
+            {{- if .Values.asg.kb.wntPubkey }}
+            - name: ASG_KB_WNT_PUBKEY
+              value: {{ .Values.asg.kb.wntPubkey | quote }}
+            {{- end }}
+            {{- if .Values.asg.kb.sm2Pubkey }}
+            - name: ASG_KB_WNT_SM2_PUBKEY
+              value: {{ .Values.asg.kb.sm2Pubkey | quote }}
+            {{- end }}
+            - name: ASG_KB_BUNDLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.asg.kb.bundleKeySecret }}
+                  key: bundleKey
+                  # Secret 由运维经安全通道一次性创建；未就位时 optional 使 console 仍可启动，
+                  # 仅 KB 更新在应用层 fail-closed（WntBundleCipher 缺密钥即拒），不放大为整站不可用。
+                  optional: true
             {{- end }}
             - name: HIGRESS_CONSOLE_NS
               value: {{ .Release.Namespace }}

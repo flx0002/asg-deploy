@@ -15,29 +15,16 @@ type CategoryRule struct {
 	Suffixes  []string `json:"suffixes"`
 }
 
-// 影子AI 域名分类兜底库：Console 分类库未下发（不可达/旧版本）时使用
+// 影子AI 域名分类兜底库：**已清空**（产品决策：分类唯一权威源为 Console/KB）。
+// 数据流：KB(active) → ai-shadow-detect WasmPlugin CR categories → dns-policy →
+// SetDynamicCategories，与网关内联检测同源同口径（saas_ai/embedded_ai/ai_agent 等）。
+// 保留本变量与 ClassifyFull 静态回退分支作为扩展点，但默认为空：Console 不可达的冷启动
+// 窗口内域名归类为 unknown/low（不参与 enforcement 非授权阻断判定）；冷启动阻断仍由
+// config.yaml 的 domain_blacklist 独立兜底，不依赖本静态库。
 var categoryRules = []struct {
 	category string
 	domains  []string
-}{
-	{"official", []string{
-		"openai.com", "chatgpt.com", "claude.ai", "anthropic.com", "gemini.google.com",
-		"bard.google.com", "perplexity.ai", "copilot.microsoft.com", "chat.deepseek.com",
-		"deepseek.com", "kimi.moonshot.cn", "moonshot.cn", "tongyi.aliyun.com",
-		"qianwen.aliyun.com", "doubao.com", "yiyan.baidu.com", "erniebot.baidu.com",
-		"zhipuai.cn", "bigmodel.cn", "spark.xfyun.cn", "iflytek.com", "minimax.chat",
-		"hailuoai.com", "stepchat.com", "hunyuan.tencent.com", "llm.moonshot.cn",
-		"chatglm.cn",
-	}},
-	{"proxy", []string{
-		"openai-proxy", "aiproxy", "one-api", "new-api", "unified-api", "api2d.com",
-		"ohmygpt.com", "gptgod.online", "chatanywhere", "freegpt", "porthub",
-	}},
-	{"opensource", []string{ // 仅模型托管类；通用代码托管站 github.com/gitee.com 已移出（防误报）
-		"ollama", "localhost", "huggingface.co", "hf.co", "modelscope.cn",
-		"vllm", "text-generation-webui", "huggingface", "models.github.com",
-	}},
-}
+}{}
 
 // 动态分类库（Console 策略轮询更新，并发读）
 var (
@@ -76,7 +63,7 @@ func matchIn(domain string, list []string) bool {
 // ClassifyFull 分类 + 风险等级 + 是否 AI 域名命中（IR-001 分级对齐）：
 //  1. 动态库优先（Console dns-policy categories，与网关同源同口径），
 //     命中返回分类名与其配置的 risk_level（saas_ai=high / embedded_ai=medium / ai_agent=critical）；
-//  2. 动态库未命中时回退本地静态兜底库（official/proxy → high，opensource → medium）；
+//  2. 动态库未命中时回退本地静态兜底库（categoryRules 现已清空，见其注释；保留为扩展点）；
 //  3. 均未命中 → ("unknown", "low", false)。
 //
 // matched=false（unknown）不参与 enforcement 非授权阻断判定。

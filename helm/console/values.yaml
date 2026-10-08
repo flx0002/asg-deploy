@@ -161,3 +161,10 @@ asg:
     secretName: "asg-console-mysql"
     ddlAuto: "update"
     dialect: "org.hibernate.dialect.MySQL8Dialect"
+  kb:
+    # 厂商 KB 更新包 .wnt 外层校签 ECC 公钥（SEC1 压缩点 hex，公开可入仓）
+    wntPubkey: "03e74ce745cafa9a6fec00d7e9f306a8d6f643cd2de96361521a89f6e0a471a562"
+    # 内层 AES-256-GCM 对称密钥（ASG_KB_BUNDLE_KEY）绝不入仓，仅引用运行期 Secret
+    bundleKeySecret: "asg-kb-bundle-key"
+    # 可选国密 SM2 公钥（GM 信封校签），留空表示不启用
+    sm2Pubkey: ""
