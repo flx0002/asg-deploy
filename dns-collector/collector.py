@@ -170,11 +170,11 @@ def list_block_rules():
 
 
 
-def sync_block_rules(mode, authorized):
+def sync_block_rules(mode, authorized, enabled=True):
     """双规则同步：DNS qname（任意 UDP 端口）+ TLS SNI（任意 TCP 端口）。
-    enforcement 阻断未授权 AI 域名，其余情况清空两类规则。"""
+    enforcement 阻断未授权 AI 域名，其余情况（含功能关闭 enabled=False）清空两类规则。"""
     exp_dns, exp_sni = set(), set()
-    if mode == "enforcement":
+    if enabled and mode == "enforcement":
         for d in KNOWN_DOMAINS:
             if is_authorized(d, authorized):
                 continue
@@ -215,6 +215,7 @@ class DnsCapture:
         self.policy_lock = threading.Lock()
         self.policy_mode = "monitoring"
         self.policy_authorized = set()
+        self.policy_enabled = True
 
     def _tshark_cmd(self):
         return [
@@ -254,7 +255,7 @@ class DnsCapture:
             return
         domain_metric = known_domain.replace(".", "_").replace("-", "_")
         with self.policy_lock:
-            blocked = self.policy_mode == "enforcement" and not is_authorized(known_domain,
+            blocked = self.policy_enabled and self.policy_mode == "enforcement" and not is_authorized(known_domain,
                                                                               self.policy_authorized)
         status = "blocked" if blocked else "allowed"
         with self.lock:
@@ -266,7 +267,7 @@ class DnsCapture:
 
     def current_status(self, known_domain):
         with self.policy_lock:
-            blocked = self.policy_mode == "enforcement" and not is_authorized(known_domain,
+            blocked = self.policy_enabled and self.policy_mode == "enforcement" and not is_authorized(known_domain,
                                                                               self.policy_authorized)
         return "blocked" if blocked else "allowed"
 
@@ -332,12 +333,14 @@ def policy_loop(capture):
             data = json.loads(body)["data"]
             mode = data.get("mode", "monitoring")
             authorized = set(data.get("authorizedDomains") or [])
+            enabled = bool(data.get("enabled", True))
             with capture.policy_lock:
                 capture.policy_mode = mode
                 capture.policy_authorized = authorized
-            rule_count = sync_block_rules(mode, authorized)
-            print("[policy] mode=%s authorized=%d rules=%d"
-                  % (mode, len(authorized), rule_count), flush=True)
+                capture.policy_enabled = enabled
+            rule_count = sync_block_rules(mode, authorized, enabled)
+            print("[policy] mode=%s enabled=%s authorized=%d rules=%d"
+                  % (mode, enabled, len(authorized), rule_count), flush=True)
         except Exception as e:
             print("[policy] fetch failed: %s" % e, flush=True)
 
@@ -396,10 +399,12 @@ def main():
         status, body = http_json(CONSOLE_BASE.rstrip("/") + "/v1/ai-shadow/dns-policy", {}, "GET")
         if status == 200:
             data = json.loads(body)["data"]
+            enabled = bool(data.get("enabled", True))
             with CAPTURE.policy_lock:
                 CAPTURE.policy_mode = data.get("mode", "monitoring")
                 CAPTURE.policy_authorized = set(data.get("authorizedDomains") or [])
-            sync_block_rules(CAPTURE.policy_mode, CAPTURE.policy_authorized)
+                CAPTURE.policy_enabled = enabled
+            sync_block_rules(CAPTURE.policy_mode, CAPTURE.policy_authorized, enabled)
     except Exception as e:
         print("[policy] initial sync failed: %s" % e, flush=True)
     CAPTURE.run()
