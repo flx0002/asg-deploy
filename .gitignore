@@ -6,3 +6,4 @@ __pycache__/
 
 # build-release.sh 产物
 bypass-guard/dist/
+helm/console/values-kb-secret.yaml

@@ -67,22 +67,10 @@ spec:
               value: {{ .Values.asg.mysql.dialect | quote }}
             - name: ASG_COLLECTOR_TOKEN
               value: {{ .Values.asg.collectorToken | quote }}
-            {{- if .Values.asg.kb.wntPubkey }}
-            - name: ASG_KB_WNT_PUBKEY
-              value: {{ .Values.asg.kb.wntPubkey | quote }}
-            {{- end }}
             {{- if .Values.asg.kb.sm2Pubkey }}
             - name: ASG_KB_WNT_SM2_PUBKEY
               value: {{ .Values.asg.kb.sm2Pubkey | quote }}
             {{- end }}
-            - name: ASG_KB_BUNDLE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.asg.kb.bundleKeySecret }}
-                  key: bundleKey
-                  # Secret 由运维经安全通道一次性创建；未就位时 optional 使 console 仍可启动，
-                  # 仅 KB 更新在应用层 fail-closed（WntBundleCipher 缺密钥即拒），不放大为整站不可用。
-                  optional: true
             {{- end }}
             - name: HIGRESS_CONSOLE_NS
               value: {{ .Release.Namespace }}
@@ -120,6 +108,44 @@ spec:
               value: "{{ .Values.swagger.enabled }}"
             - name: SPRINGDOC_SWAGGER_UI_ENABLED
               value: "{{ .Values.swagger.enabled }}"
+            {{- if .Values.asg.kb.verifyPubkey }}
+            - name: ASG_KB_VERIFY_PUBKEY
+              value: {{ .Values.asg.kb.verifyPubkey | quote }}
+            {{- end }}
+            {{- if .Values.asg.kb.onlineUrl }}
+            - name: ASG_KB_ONLINE_URL
+              value: {{ .Values.asg.kb.onlineUrl | quote }}
+            {{- end }}
+            - name: ASG_KB_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: asg-kb-env
+                  key: apiKey
+                  optional: true
+            {{- if .Values.asg.kb.esn }}
+            - name: ASG_KB_ESN
+              value: {{ .Values.asg.kb.esn | quote }}
+            {{- end }}
+            - name: ASG_KB_LICENSE_PRIVKEY
+              valueFrom:
+                secretKeyRef:
+                  name: asg-kb-env
+                  key: licensePrivkey
+                  optional: true
+            {{- if .Values.asg.kb.wntPubkey }}
+            - name: ASG_KB_WNT_PUBKEY
+              value: {{ .Values.asg.kb.wntPubkey | quote }}
+            {{- end }}
+            - name: ASG_KB_BUNDLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: asg-kb-env
+                  key: bundleKey
+                  optional: true
+            {{- if .Values.asg.kb.buildTs }}
+            - name: ASG_KB_BUILD_TS
+              value: {{ .Values.asg.kb.buildTs | quote }}
+            {{- end }}
             {{- if and .Values.global.enablePluginServer (not (hasKey .Values.podEnvs "HIGRESS_ADMIN_WASM_PLUGIN_CUSTOM_IMAGE_URL_PATTERN"))}}
             - name: HIGRESS_ADMIN_WASM_PLUGIN_CUSTOM_IMAGE_URL_PATTERN
               value: "{{ .Values.pluginServer.urlPattern }}"

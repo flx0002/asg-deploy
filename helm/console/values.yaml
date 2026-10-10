@@ -162,9 +162,18 @@ asg:
     ddlAuto: "update"
     dialect: "org.hibernate.dialect.MySQL8Dialect"
   kb:
+    # DEF-002：KB 校签 env。公开项(wntPubkey/sm2Pubkey/esn/onlineUrl/verifyPubkey/buildTs)以默认值入仓；
+    # 敏感项(apiKey/licensePrivkey/bundleKey)不入仓，留空，由 chart secret-kb.yaml 生成 asg-kb-env Secret，
+    # 部署时经 gitignored helm/console/values-kb-secret.yaml 首次注入（lookup 保留，之后升级不清空）。
     # 厂商 KB 更新包 .wnt 外层校签 ECC 公钥（SEC1 压缩点 hex，公开可入仓）
     wntPubkey: "03e74ce745cafa9a6fec00d7e9f306a8d6f643cd2de96361521a89f6e0a471a562"
-    # 内层 AES-256-GCM 对称密钥（ASG_KB_BUNDLE_KEY）绝不入仓，仅引用运行期 Secret
-    bundleKeySecret: "asg-kb-bundle-key"
     # 可选国密 SM2 公钥（GM 信封校签），留空表示不启用
     sm2Pubkey: ""
+    buildTs: "1790671232"
+    # ↓ 以下三项为敏感值，不入库，由 values-kb-secret.yaml 部署时注入
+    bundleKey: ""
+    licensePrivkey: ""
+    esn: "ASG-KB-0001"
+    apiKey: ""
+    onlineUrl: "http://172.22.0.1:18080"
+    verifyPubkey: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsZN+F5pdW6sUeZGmjiYYWBSqVWSo1E5RrsDTQyW/gsnpYxRHjX6l7vthAiZbSifdx+7Oj1MbBvCobwf/OiR/1o5m32+3HKKS/IRnsi31Dk9OYmra4pPO4beBQYM5ScPulDkYlZ3d8Q0TYuKDYTBPbcAZOSXywMsuyTpnWIyuGaIg0NfxNKTJ+jKF0si5joieuskoUXfI3NAcg74Ee9Nt9vBNlYKZiZIPUJOW56UWAT09GAwtzLICiPy2XF2dZMbtB5ksv4VPEils0EjPgvzZLCTomTnti//mqr/1ghDwbx+h4+ntRMqrc5maCE6TleTQILeTMgz0vZFKhWuXraJEvwIDAQAB"
