@@ -54,6 +54,23 @@ for f in images/kind-node.tar images/registry.tar images/pod-images.tar images/p
   [ -e "$PKG_DIR/$f" ] || { echo "!! 离线包缺少 $f(请用 pack-offline.sh 重新打包)"; exit 1; }
 done
 ldconfig -p 2>/dev/null | grep -q libpcap || echo "  ! 警告: 未检测到 libpcap，bypass-guard 可能无法启动(Debian/Ubuntu: apt install libpcap0.8；RHEL/银河麒麟: yum install libpcap)"
+# cgroup v2 前置检查：kind + kindest/node v1.31(systemd cgroup driver) 要求宿主机 cgroup v2(unified)。
+# cgroup v1 下 kubelet 建不出 kubelet.slice/kubelet-kubepods.slice 而崩溃 → [2] "API server is not healthy" 超时(约4m)后才失败，
+# 极难定位。银河麒麟 Kylin V10/内核4.19 默认 cgroup v1；amd64 生产基线(内核6.x)默认已是 v2，故本检查对 amd64 零影响。
+CGTYPE="$(stat -fc %T /sys/fs/cgroup/ 2>/dev/null || echo unknown)"
+if [ "$CGTYPE" != "cgroup2fs" ]; then
+  if [ "${ASG_SKIP_CGROUP_CHECK:-0}" = 1 ]; then
+    echo "  ! 警告: 宿主机 cgroup=$CGTYPE(非 v2)，已按 ASG_SKIP_CGROUP_CHECK=1 跳过检查，[2] 建集群可能失败"
+  else
+    echo "!! 宿主机 cgroup 为 v1/hybrid($CGTYPE)，kind 建集群会失败(kubelet cgroup 崩溃 → API server 超时约4m)。"
+    echo "   需切换 cgroup v2 后重试：在 /etc/default/grub 的 GRUB_CMDLINE_LINUX 追加 systemd.unified_cgroup_hierarchy=1，"
+    echo "   再 grub2-mkconfig -o /boot/efi/EFI/<发行版>/grub.cfg (或 /boot/grub2/grub.cfg) 并 reboot。详见手册《arm64/银河麒麟》与 FAQ。"
+    echo "   (确知环境无此问题可设 ASG_SKIP_CGROUP_CHECK=1 跳过本检查)"
+    exit 1
+  fi
+else
+  echo "  cgroup v2(unified) ✓"
+fi
 echo "  离线包完整，版本: $(cat "$PKG_DIR/VERSION" 2>/dev/null || echo unknown)"
 
 # ---------- [1] 导入基础镜像到宿主机 docker ----------
@@ -207,3 +224,4 @@ echo "  Console 管理台 : http://$HOST_IP:$CONSOLE_PORT   (账号 admin / admi
 echo "  网关入口       : http://$HOST_IP:$GW_HTTP_PORT  |  https://$HOST_IP:$GW_HTTPS_PORT"
 echo "  私有 registry  : $REG_IP:5000 (集群内插件拉取)"
 echo "  旁路采集器     : systemctl status $BYPASS_SVC"
+
