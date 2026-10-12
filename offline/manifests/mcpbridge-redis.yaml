@@ -1,0 +1,24 @@
+# ============================================================
+# McpBridge —— 注册集群内 redis-stack-server 为 DNS 服务源
+# ------------------------------------------------------------
+# ai-quota / ai-token-billing / ai-agent-guard 三个 WasmPlugin 运行时通过
+# service_name: redis-stack-server.internal.dns 连接 redis 做配额/计费/会话计数。
+# higress 需要 default McpBridge 中存在名为 redis-stack-server.internal 的 dns 注册项，
+# 网关才会为其生成对应 envoy cluster；缺失时插件日志反复报
+# "failed to init redis: ... bad argument"（redis_fail_action=degrade 下请求仍放行，但计数失效）。
+# 全新安装(离线包)默认不含任何服务源，故 install.sh [9] 随插件一并 apply 本文件。
+# namespace 与 redis 域名中的 higress-system 由 install.sh 按 $NS 渲染。
+# LLM 上游等其它服务源属 day-2 配置，由 Console「服务来源」页面追加(更新同一 default McpBridge)。
+# ============================================================
+apiVersion: networking.higress.io/v1
+kind: McpBridge
+metadata:
+  name: default
+  namespace: higress-system
+spec:
+  registries:
+  - domain: redis-stack-server.higress-system.svc.cluster.local
+    name: redis-stack-server.internal
+    port: 6379
+    protocol: tcp
+    type: dns

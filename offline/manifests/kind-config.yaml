@@ -1,0 +1,26 @@
+# ============================================================
+# ASG Kind 集群配置 —— install.sh 创建集群时使用
+# 端口映射依据现网(192.168.122.156)实测 docker PortBindings 反推：
+#   现网原仅暴露 80/443(网关) + 6443(apiserver)，Console 走 port-forward(asg-console-pf→28080)；
+#   本配置在此基础上新增 30080 直连映射(见下)，使宿主机可 http://<host>:30080 免 port-forward 访问 Console。
+#   注：30080 宿主机→节点映射为本次新增，现网既有集群未含此映射，需新建集群方可生效。
+# ============================================================
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: higress
+nodes:
+- role: control-plane
+  image: kindest/node:v1.31.0
+  extraPortMappings:
+  # 网关入口：higress local 模式下 gateway 暴露于节点 80/443
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+  # Console 便捷访问（宿主机直接 http://<host>:30080，免 port-forward 服务）
+  # 现网原用 asg-console-pf(port-forward)，此处简化为固定端口映射
+  - containerPort: 30080
+    hostPort: 30080
+    protocol: TCP
