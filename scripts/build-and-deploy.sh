@@ -2,7 +2,7 @@
 # WntASG Console - Build and Deploy Script（asg-deploy 版, 4.7）
 # 用法: ./build-and-deploy.sh [command]
 #   build   - 构建 Docker 镜像（默认；Dockerfile = asg-deploy/Dockerfile，构建上下文 = console 仓库）
-#   deploy  - 构建镜像 + kind load + helm upgrade + 滚动重启（chart = asg-deploy/helm/higress）
+#   deploy  - 构建镜像 + kind load + helm upgrade + 按镜像内容滚动（chart = asg-deploy/helm/higress）
 #   clean   - 删除本地镜像
 # 环境变量: CONSOLE_DIR（console 仓库路径，默认 /home/wnt/ASG/AISecGw-console）
 #           IMAGE_NAME / IMAGE_TAG / NAMESPACE

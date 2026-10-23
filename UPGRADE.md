@@ -135,9 +135,12 @@ mvn -q compile -s $M2SET -Dpmd.skip=true -Dcheckstyle.skip=true -Dgpg.sign.skip=
 cd /home/wnt/ASG/asg-deploy
 IMAGE_TAG=V100R001C01B010 bash scripts/build-and-deploy.sh deploy
 # = docker build（buildx 缓存）→ kind load → helm upgrade（chart=helm/higress）
-# 镜像 tag 未变时 Deployment 不滚动 → 需显式重启：
-kubectl rollout restart deployment/higress-console -n higress-system
-kubectl rollout status deployment/higress-console -n higress-system --timeout=300s
+# 脚本把镜像内容 ID 写进 pod 模板 annotation（higress-console.podAnnotations.asg-image-checksum）：
+#   镜像内容变 → 模板变 → 自动滚动；内容没变 → 不动 pod。
+# 因此不需要手工 rollout restart（手工再加一次只会让 pod 白滚一遍）。
+# 部署结束脚本会打印当前生效的 imageID —— 那是判断"是否真上线"的唯一依据：
+kubectl -n higress-system get pod -l app.kubernetes.io/name=higress-console \
+  -o custom-columns=NAME:.metadata.name,DELETING:.metadata.deletionTimestamp,IMAGE:.status.containerStatuses[0].imageID --no-headers
 ```
 
 ### Step 8 集群回归清单
