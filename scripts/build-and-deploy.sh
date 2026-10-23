@@ -2,7 +2,7 @@
 # WntASG Console - Build and Deploy Script（asg-deploy 版, 4.7）
 # 用法: ./build-and-deploy.sh [command]
 #   build   - 构建 Docker 镜像（默认；Dockerfile = asg-deploy/Dockerfile，构建上下文 = console 仓库）
-#   deploy  - 构建镜像 + kind load + helm upgrade（chart = asg-deploy/helm/higress）
+#   deploy  - 构建镜像 + kind load + helm upgrade + 滚动重启（chart = asg-deploy/helm/higress）
 #   clean   - 删除本地镜像
 # 环境变量: CONSOLE_DIR（console 仓库路径，默认 /home/wnt/ASG/AISecGw-console）
 #           IMAGE_NAME / IMAGE_TAG / NAMESPACE
@@ -32,6 +32,13 @@ build_image() {
     echo "=== Build complete: ${FULL_IMAGE} ==="
 }
 
+print_live_image_ids() {
+    # 只打印未在删除中的 pod（<none> = 没有 deletionTimestamp）
+    kubectl -n "${NAMESPACE}" get pod -l app.kubernetes.io/name=higress-console \
+        -o custom-columns=NAME:.metadata.name,DELETING:.metadata.deletionTimestamp,IMAGE:.status.containerStatuses[0].imageID \
+        --no-headers | awk '$2 == "<none>" { printf "%s -> %s\n", $1, $3 }'
+}
+
 deploy_to_k8s() {
     build_image
     local cluster_name
@@ -48,8 +55,19 @@ deploy_to_k8s() {
         --set higress-console.image.tag="${IMAGE_TAG}" \
         --set higress-console.image.pullPolicy=Never \
         --reuse-values
-    echo "=== Waiting for console pod rollout ==="
-    kubectl rollout status deployment/higress-console -n "${NAMESPACE}" --timeout=120s
+    # tag 恒为 latest 且 pullPolicy=Never：重建镜像后 pod 模板 spec 不变，
+    # helm 与 rollout status 都会判成功，但容器仍在跑旧镜像。必须显式重启。
+    # 换镜像只能看 imageID，脚本那两句 rollout 成功提示对 latest+Never 没有鉴别力。
+    # 过滤 deletingTimestamp：滚动中旧 pod 仍在 Terminating，不过滤会把旧 imageID 一起打出来。
+    echo "=== Restarting console pod to pick up the new image ==="
+    kubectl rollout restart deployment/higress-console -n "${NAMESPACE}"
+    if ! kubectl rollout status deployment/higress-console -n "${NAMESPACE}" --timeout=180s; then
+        echo "!! Rollout 未在 180s 内完成，当前仍在运行的镜像:"
+        print_live_image_ids
+        exit 1
+    fi
+    echo "=== Effective imageID: 判断是否真上线的唯一依据 ==="
+    print_live_image_ids
     echo "=== Deploy complete ==="
     echo "Access console: kubectl port-forward -n ${NAMESPACE} svc/higress-console 8080:8080"
 }
