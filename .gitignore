@@ -7,3 +7,7 @@ __pycache__/
 # build-release.sh 产物
 bypass-guard/dist/
 helm/console/values-kb-secret.yaml
+
+# 本地测试数据（license / 知识库种子 / appA values），不入库
+artifacts/
+scripts/gb45654/
