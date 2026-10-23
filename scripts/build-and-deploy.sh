@@ -48,19 +48,22 @@ deploy_to_k8s() {
         kind load docker-image "${FULL_IMAGE}" --name "${cluster_name}"
     fi
     echo "=== Updating Helm release (chart: ${DEPLOY_DIR}/helm/higress) ==="
+    # 把镜像内容 ID 写进 pod 模板 annotation：镜像内容变则模板变、自动滚动；
+    # 镜像没变则模板不变、不重启。tag 恒 latest + pullPolicy=Never 时，
+    # 不这样做 pod 模板永远不变，helm 会判"无更新"，容器一直跑旧镜像。
+    local image_id
+    image_id="$(docker image inspect --format '{{.Id}}' "${FULL_IMAGE}")"
+    echo "    image content id: ${image_id}"
     helm dependency build "${DEPLOY_DIR}/helm/higress" >/dev/null
     helm upgrade higress "${DEPLOY_DIR}/helm/higress" \
         -n "${NAMESPACE}" \
         --set higress-console.image.repository="${IMAGE_NAME}" \
         --set higress-console.image.tag="${IMAGE_TAG}" \
         --set higress-console.image.pullPolicy=Never \
+        --set-string higress-console.podAnnotations.asg-image-checksum="${image_id}" \
         --reuse-values
-    # tag 恒为 latest 且 pullPolicy=Never：重建镜像后 pod 模板 spec 不变，
-    # helm 与 rollout status 都会判成功，但容器仍在跑旧镜像。必须显式重启。
-    # 换镜像只能看 imageID，脚本那两句 rollout 成功提示对 latest+Never 没有鉴别力。
-    # 过滤 deletingTimestamp：滚动中旧 pod 仍在 Terminating，不过滤会把旧 imageID 一起打出来。
-    echo "=== Restarting console pod to pick up the new image ==="
-    kubectl rollout restart deployment/higress-console -n "${NAMESPACE}"
+    # 只有 annotation 变化才会触发滚动；未变化时这里立即返回成功，不动 pod。
+    echo "=== Waiting for rollout (仅镜像内容变化时才会滚动) ==="
     if ! kubectl rollout status deployment/higress-console -n "${NAMESPACE}" --timeout=180s; then
         echo "!! Rollout 未在 180s 内完成，当前仍在运行的镜像:"
         print_live_image_ids
